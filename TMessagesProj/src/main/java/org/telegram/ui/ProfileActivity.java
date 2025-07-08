@@ -522,6 +522,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private final static float avatarSizeDefault = 88f;
     private final static float avatarSizeDefaultHalf = avatarSizeDefault / 2f;
     private final static float topContentHeightDefault = 200;
+
+    public final static int avatarExpandedExtraHeight = 64;
+
     private final static int add_contact = 1;
     private final static int block_contact = 2;
     private final static int share_contact = 3;
@@ -1020,7 +1023,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
         @Override
         protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-            setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.getSize(widthMeasureSpec) + AndroidUtilities.dp(3));
+            setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.getSize(widthMeasureSpec) + AndroidUtilities.dp(avatarExpandedExtraHeight));
         }
 
         @Override
@@ -2985,7 +2988,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         paddingTop = AndroidUtilities.dp(topContentHeightDefault);
                         paddingBottom = 0;
                     } else {
-                        paddingTop = listView.getMeasuredWidth();
+                        paddingTop = listView.getMeasuredWidth() - actionBarHeight + AndroidUtilities.dp(avatarExpandedExtraHeight);
                         paddingBottom = Math.max(0, getMeasuredHeight() - (listContentHeight + AndroidUtilities.dp(topContentHeightDefault) + actionBarHeight));
                     }
                     if (banFromGroup != 0) {
@@ -3721,7 +3724,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         if (view != null) {
                             if (isPulledDown) {
                                 final int actionBarHeight = ActionBar.getCurrentActionBarHeight() + (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0);
-                                listView.smoothScrollBy(0, view.getTop() - listView.getMeasuredWidth() + actionBarHeight, CubicBezierInterpolator.EASE_OUT_QUINT);
+                                listView.smoothScrollBy(0, view.getTop() - listView.getMeasuredWidth() + actionBarHeight - AndroidUtilities.dp(avatarExpandedExtraHeight), CubicBezierInterpolator.EASE_OUT_QUINT);
                             } else {
                                 listView.smoothScrollBy(0, view.getTop() - AndroidUtilities.dp(topContentHeightDefault), CubicBezierInterpolator.EASE_OUT_QUINT);
                             }
@@ -5669,7 +5672,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 if (holder != null) {
                     Integer offset = positionToOffset.get(holder.getAdapterPosition());
                     if (offset != null) {
-                        listView.smoothScrollBy(0, -(offset + (listView.getPaddingTop() - child.getTop() - actionBar.getMeasuredHeight())), CubicBezierInterpolator.EASE_OUT_QUINT);
+                        int dy = -(offset + (listView.getPaddingTop() - child.getTop() - actionBar.getMeasuredHeight() + AndroidUtilities.dp(avatarExpandedExtraHeight) + (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0)));
+                        listView.smoothScrollBy(0, dy, CubicBezierInterpolator.EASE_OUT_QUINT);
                         return true;
                     }
                 }
@@ -7353,7 +7357,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
             float h = openAnimationInProgress ? initialAnimationExtraHeight : extraHeight;
             if (h > AndroidUtilities.dp(topContentHeightDefault) || isPulledDown) {
-                expandProgress = Math.max(0f, Math.min(1f, (h - AndroidUtilities.dp(topContentHeightDefault)) / (listView.getMeasuredWidth() - newTop - AndroidUtilities.dp(topContentHeightDefault))));
+                expandProgress = Math.max(0f, Math.min(1f, (h - AndroidUtilities.dp(topContentHeightDefault)) / (listView.getMeasuredWidth() + AndroidUtilities.dp(avatarExpandedExtraHeight) - newTop - AndroidUtilities.dp(topContentHeightDefault))));
                 avatarScale = AndroidUtilities.lerp((avatarSizeDefault + 18f) / avatarSizeDefault, (avatarSizeDefault + avatarSizeDefault + 18f) / avatarSizeDefault, Math.min(1f, expandProgress * 3f));
                 if (storyView != null) {
                     storyView.invalidate();
