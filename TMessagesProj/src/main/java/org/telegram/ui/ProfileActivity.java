@@ -525,7 +525,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     public final static int avatarSmallDybetweenMediumAndBig = 24;
     public final static float avatarSmallScalebetweenMediumAndBig = 1.2f;
     public final static int avatarExpandedExtraHeight = 64;
-
+    public final static int avatarTopMarginForAbsord= 18;
     private final static int add_contact = 1;
     private final static int block_contact = 2;
     private final static int share_contact = 3;
@@ -820,6 +820,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         private ImageReceiver.BitmapHolder drawableHolder;
         boolean drawForeground = true;
         float progressToExpand;
+        float progressCollapse=1; //1 is when image is open, 0 when it's collapsed
 
         ProfileGalleryView avatarsViewPager;
         private boolean hasStories;
@@ -1026,6 +1027,15 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 return;
             }
             progressToExpand = animatedFracture;
+            invalidate();
+        }
+
+        public void setProgressCollapse(float animatedFracture){
+            if (progressCollapse == animatedFracture) {
+                return;
+            }
+            progressCollapse = animatedFracture;
+            setScaleY(progressCollapse);
             invalidate();
         }
     }
@@ -7375,7 +7385,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
 
             avatarX = -AndroidUtilities.dpf2(47f) * diff;
-            avatarY = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2.0f * (1.0f + diff) - avatarSizeDefaultHalf * AndroidUtilities.density + 27 * AndroidUtilities.density * diff + actionBar.getTranslationY();
+            float avatarTranslationDiff= Math.max(0f,(diff-0.5f)*2f);
+            avatarY = avatarTranslationDiff * (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() *  avatarTranslationDiff - avatarSizeDefaultHalf * AndroidUtilities.density* avatarTranslationDiff+ 27 * AndroidUtilities.density * avatarTranslationDiff + actionBar.getTranslationY()+ (1f-avatarTranslationDiff) * AndroidUtilities.density * avatarTopMarginForAbsord;
 
             float h = openAnimationInProgress ? initialAnimationExtraHeight : extraHeight;
             if (h > AndroidUtilities.dp(topContentHeightDefault) || isPulledDown) {
@@ -7598,7 +7609,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
                 updateCollectibleHint();
             } else if (extraHeight <= AndroidUtilities.dp(topContentHeightDefault)) {
-                avatarScale = 1;
+                float avatarScaleDiff= Math.max(0f,(diff-0.9f)*10f);
+                avatarScale = AndroidUtilities.lerp(0.9f,1f,avatarScaleDiff);
+                avatarImage.setProgressCollapse(Math.min(0.5f,diff)*2f);
                 if (storyView != null) {
                     storyView.invalidate();
                 }
