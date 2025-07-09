@@ -33,11 +33,14 @@ import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.SecureDocument;
 import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLObject;
+import org.telegram.ui.ProfileActivity;
 
 public class BackupImageView extends View {
 
     protected ImageReceiver imageReceiver;
     protected ImageReceiver blurImageReceiver;
+    protected ImageReceiver expandedBlurImageReceiver;
+
     protected int width = -1;
     protected int height = -1;
     public AnimatedEmojiDrawable animatedEmojiDrawable;
@@ -48,6 +51,8 @@ public class BackupImageView extends View {
     protected boolean hasBlur;
     protected boolean blurAllowed;
     public boolean drawFromStart;
+    public boolean drawExpandedBlur = false;
+
 
     public BackupImageView(Context context) {
         super(context);
@@ -57,6 +62,7 @@ public class BackupImageView extends View {
         imageReceiver.setDelegate((imageReceiver1, set, thumb, memCache) -> {
             if (set && !thumb) {
                 checkCreateBlurredImage();
+                checkCreateExpandedBlurredImage();
             }
         });
     }
@@ -89,6 +95,23 @@ public class BackupImageView extends View {
         checkCreateBlurredImage();
     }
 
+
+    public void setHasDrawExpandedBlur(boolean hasDrawExpandedBlur) {
+        if (attached) {
+            throw new IllegalStateException("You should call setHasDrawExpandedBlur(...) only when detached!");
+        }
+        drawExpandedBlur = hasDrawExpandedBlur;
+        if (hasDrawExpandedBlur && expandedBlurImageReceiver == null) {
+            expandedBlurImageReceiver = new ImageReceiver();
+        }
+        if (!hasDrawExpandedBlur && expandedBlurImageReceiver != null) {
+            if (expandedBlurImageReceiver.getBitmap() != null && !expandedBlurImageReceiver.getBitmap().isRecycled()) {
+                expandedBlurImageReceiver.getBitmap().recycle();
+            }
+        }
+        checkCreateExpandedBlurredImage();
+    }
+
     public void onNewImageSet() {
         if (hasBlur) {
             if (blurImageReceiver.getBitmap() != null && !blurImageReceiver.getBitmap().isRecycled()) {
@@ -96,6 +119,10 @@ public class BackupImageView extends View {
             }
             blurImageReceiver.setImageBitmap((Bitmap) null);
             checkCreateBlurredImage();
+
+        }
+        if(drawExpandedBlur){
+            checkCreateExpandedBlurredImage();
         }
     }
 
@@ -104,6 +131,16 @@ public class BackupImageView extends View {
             Bitmap bitmap = imageReceiver.getBitmap();
             if (bitmap != null && !bitmap.isRecycled()) {
                 blurImageReceiver.setImageBitmap(Utilities.stackBlurBitmapMax(bitmap));
+                invalidate();
+            }
+        }
+    }
+
+    private void checkCreateExpandedBlurredImage() {
+        if (drawExpandedBlur && imageReceiver.getBitmap() != null) {
+            Bitmap bitmap = imageReceiver.getBitmap();
+            if (bitmap != null && !bitmap.isRecycled()) {
+                expandedBlurImageReceiver.setImageBitmap(Utilities.stackBlurBitmapForProfileExpanded(bitmap));
                 invalidate();
             }
         }
@@ -322,7 +359,16 @@ public class BackupImageView extends View {
         if (animatedEmojiDrawable != null && animatedEmojiDrawableColorFilter != null) {
             animatedEmojiDrawable.setColorFilter(animatedEmojiDrawableColorFilter);
         }
-        if (width != -1 && height != -1) {
+        if (drawExpandedBlur) {
+            imageReceiver.setImageCoords(0, -height + (getHeight() - height), width, height);
+            canvas.save();
+            canvas.scale(1f, -1f, getWidth() / 2f, getHeight() / 2f);
+            imageReceiver.draw(canvas);
+            canvas.restore();
+            imageReceiver.setImageCoords(0, 0, getWidth(), getWidth());
+            float y= 1f* getMeasuredWidth() * AndroidUtilities.dpf2(ProfileActivity.avatarExpandedExtraHeight)/Math.min(AndroidUtilities.displaySize.x,AndroidUtilities.displaySize.y);
+            expandedBlurImageReceiver.setImageCoords(0, y, getWidth(), getWidth());
+        } else if (width != -1 && height != -1) {
             if (drawFromStart) {
                 imageReceiver.setImageCoords(0, 0, width, height);
                 if (blurAllowed) {
@@ -341,6 +387,10 @@ public class BackupImageView extends View {
             }
         }
         imageReceiver.draw(canvas);
+
+        if (drawExpandedBlur) {
+            expandedBlurImageReceiver.draw(canvas);
+        }
         if (blurAllowed) {
             blurImageReceiver.draw(canvas);
         }

@@ -1379,6 +1379,8 @@ public class ProfileGalleryView extends CircularViewPager implements Notificatio
             this.position = position;
             this.placeholderPaint = placeholderPaint;
             setLayerNum(imagesLayerNum);
+            setHasDrawExpandedBlur(true);
+            setSize(Math.min(AndroidUtilities.displaySize.x,AndroidUtilities.displaySize.y), Math.min(AndroidUtilities.displaySize.x,AndroidUtilities.displaySize.y));
         }
 
         @Override

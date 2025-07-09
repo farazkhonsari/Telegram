@@ -19,6 +19,7 @@ import android.net.Uri;
 import com.carrotsearch.randomizedtesting.Xoroshiro128PlusRandom;
 
 import org.telegram.tgnet.ConnectionsManager;
+import org.telegram.ui.ProfileActivity;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -122,6 +123,23 @@ public class Utilities {
         Utilities.stackBlurBitmap(scaledBitmap, Math.max(10, Math.max(w, h) / 150));
         return scaledBitmap;
     }
+
+    public static Bitmap stackBlurBitmapForProfileExpanded(Bitmap bitmap) {
+        int w = AndroidUtilities.dp(20);
+        int h = (int) (AndroidUtilities.dp(20) * (float) bitmap.getHeight() / bitmap.getWidth());
+        Bitmap scaledBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(scaledBitmap);
+        canvas.save();
+        canvas.scale((float) scaledBitmap.getWidth() / bitmap.getWidth(), (float) scaledBitmap.getHeight() / bitmap.getHeight());
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setAlpha(250);
+        int blurTop= (int) (bitmap.getHeight() * (1f - (AndroidUtilities.dpf2(ProfileActivity.avatarExpandedExtraHeight) / AndroidUtilities.displaySize.x))*0.9f);
+        canvas.drawBitmap(bitmap, new Rect(0,  blurTop, bitmap.getWidth(), bitmap.getHeight()), new Rect(0,blurTop , bitmap.getWidth(), bitmap.getHeight()), paint);
+        canvas.restore();
+        Utilities.stackBlurBitmap(scaledBitmap, Math.max(10, Math.max(w, h) / 150));
+        return scaledBitmap;
+    }
+
 
     public static Bitmap blurWallpaper(Bitmap src) {
         if (src == null) {
