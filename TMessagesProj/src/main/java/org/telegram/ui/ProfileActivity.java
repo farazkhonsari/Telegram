@@ -51,6 +51,7 @@ import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
+import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -525,7 +526,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     public final static int avatarSmallDybetweenMediumAndBig = 24;
     public final static float avatarSmallScalebetweenMediumAndBig = 1.2f;
     public final static int avatarExpandedExtraHeight = 64;
-    public final static int avatarTopMarginForAbsord= 18;
+    public final static int avatarTopMarginForAbsord = 18;
     private final static int add_contact = 1;
     private final static int block_contact = 2;
     private final static int share_contact = 3;
@@ -820,7 +821,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         private ImageReceiver.BitmapHolder drawableHolder;
         boolean drawForeground = true;
         float progressToExpand;
-        float progressCollapse=1; //1 is when image is open, 0 when it's collapsed
+        float progressCollapse = 1; //1 is when image is open, 0 when it's collapsed
+        Path collapseCubicPath;
+        Paint collapseBlackPaint;
+        Paint collapseGradientPaint;
 
         ProfileGalleryView avatarsViewPager;
         private boolean hasStories;
@@ -835,6 +839,15 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             foregroundImageReceiver = new ImageReceiver(this);
             placeholderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             placeholderPaint.setColor(Color.BLACK);
+
+            collapseCubicPath = new Path();
+            collapseBlackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            collapseBlackPaint.setStyle(Paint.Style.FILL);
+            collapseBlackPaint.setColor(Color.BLACK);
+            collapseGradientPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            collapseGradientPaint.setColor(Color.BLACK);
+            collapseGradientPaint.setStrokeWidth(1);
+            collapseGradientPaint.setStyle(Paint.Style.FILL_AND_STROKE);
             setHasDrawExpandedBlur(true);
         }
 
@@ -921,9 +934,50 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             super.setRoundRadius(value);
         }
 
+        private float getCurrentCollapseScale() {
+            return 0.1f + progressCollapse * 0.9f;
+        }
+
+        private float getCurrentCollapseProgressY() {
+            return ((0.1f * getHeight()) + AndroidUtilities.dpf2(avatarTopMarginForAbsord)) * (1f - progressCollapse);
+        }
+
+        private float getCurrentCircleCenterY() {
+            return getCurrentCircleR() - getCurrentCollapseProgressY();
+        }
+
+        private float getCurrentCirclePointRelativeY() {
+            return getCurrentCircleR() - (1f - progressCollapse) * 2f * getCurrentCircleR();
+        }
+
+
+        private float getCurrentCircleCenterX() {
+            return getWidth() / 2f;
+        }
+
+        private float getCurrentCircleR() {
+            return getHeight() / 2f * getCurrentCollapseScale();
+        }
+
+        private float getBumpDx() {
+            return AndroidUtilities.dp(5);
+        }
+
+        private float getCurrentBumpSize() {
+            return AndroidUtilities.dpf2(avatarTopMarginForAbsord) / 2f * (getCurrentCollapseProgressY() / (AndroidUtilities.dp(avatarTopMarginForAbsord) / 2f));
+        }
+
         @Override
         protected void onDraw(Canvas canvas) {
             ImageReceiver imageReceiver = animatedEmojiDrawable != null ? animatedEmojiDrawable.getImageReceiver() : this.imageReceiver;
+            int collapseScaleSave = -1;
+            if (progressCollapse < 1) {
+                drawCollapseAnimationBackground(canvas);
+                collapseScaleSave = canvas.save();
+                canvas.translate(0, -getCurrentCollapseProgressY());
+                canvas.scale(getCurrentCollapseScale(), getCurrentCollapseScale(), getMeasuredWidth() / 2f, 0);
+                canvas.scale(Math.max(0.9f, Math.min(progressCollapse + 0.3f, 1f)), Math.max(0.9f, Math.min(progressCollapse + 0.3f, 1f)), getMeasuredWidth() / 2f, getMeasuredWidth() / 2);
+            }
             canvas.save();
             canvas.scale(bounceScale, bounceScale, getMeasuredWidth() / 2f, getMeasuredHeight() / 2f);
             float inset = hasStories ? (int) AndroidUtilities.dpf2(3.5f) : 0;
@@ -947,7 +1001,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 }
             }
             if (imageReceiver != null && alpha > 0 && (foregroundAlpha < 1f || !drawForeground)) {
-                imageReceiver.setImageCoords(inset, inset, Math.min(getMeasuredWidth(),getMeasuredHeight()) - inset * 2f, Math.min(getMeasuredWidth(),getMeasuredHeight()) - inset * 2f);
+                imageReceiver.setImageCoords(inset, inset, Math.min(getMeasuredWidth(), getMeasuredHeight()) - inset * 2f, Math.min(getMeasuredWidth(), getMeasuredHeight()) - inset * 2f);
                 final float wasAlpha = imageReceiver.getAlpha();
                 imageReceiver.setAlpha(wasAlpha * alpha);
                 if (drawAvatar) {
@@ -964,7 +1018,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 canvas.clipPath(path);
 
                 if (foregroundImageReceiver.getDrawable() != null) {
-                    foregroundImageReceiver.setImageCoords(inset, inset, Math.min(getMeasuredWidth(),getMeasuredHeight()) - inset * 2f, Math.min(getMeasuredWidth(),getMeasuredHeight()) - inset * 2f);
+                    foregroundImageReceiver.setImageCoords(inset, inset, Math.min(getMeasuredWidth(), getMeasuredHeight()) - inset * 2f, Math.min(getMeasuredWidth(), getMeasuredHeight()) - inset * 2f);
                     foregroundImageReceiver.setAlpha(alpha * foregroundAlpha);
                     foregroundImageReceiver.draw(canvas);
                 } else {
@@ -980,12 +1034,97 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 foregroundImageReceiver.draw(canvas);
                 canvas.restore();
                 expandedBlurImageReceiver.setAlpha(foregroundAlpha);
-                float y= 1f* getMeasuredWidth() * AndroidUtilities.dpf2(avatarExpandedExtraHeight)/Math.min(AndroidUtilities.displaySize.x,AndroidUtilities.displaySize.y);
-                expandedBlurImageReceiver.setImageCoords(0,y, Math.min(getMeasuredWidth(),getMeasuredHeight()) - inset * 2f, Math.min(getMeasuredWidth(),getMeasuredHeight()) - inset * 2f);
+                float y = 1f * getMeasuredWidth() * AndroidUtilities.dpf2(avatarExpandedExtraHeight) / Math.min(AndroidUtilities.displaySize.x, AndroidUtilities.displaySize.y);
+                expandedBlurImageReceiver.setImageCoords(0, y, Math.min(getMeasuredWidth(), getMeasuredHeight()) - inset * 2f, Math.min(getMeasuredWidth(), getMeasuredHeight()) - inset * 2f);
                 expandedBlurImageReceiver.draw(canvas);
 
             }
             canvas.restore();
+            if (collapseScaleSave >= 0) {
+                canvas.restoreToCount(collapseScaleSave);
+            }
+            if (progressCollapse < 1) {
+                drawCollapseAnimationForeground(canvas);
+            }
+
+        }
+
+        private void drawCollapseAnimationBackground(Canvas canvas) {
+            canvas.drawCircle(getWidth() / 2, getCurrentCircleCenterY(), getCurrentCircleR(), collapseBlackPaint);
+
+            float lineDistanceForCircle = AndroidUtilities.dp(10);
+            float y = getCurrentCirclePointRelativeY();
+            float x = (float) Math.sqrt(Math.pow(getCurrentCircleR(), 2) - y * y);
+            float r = getCurrentCircleR();
+            float circlePointY = getCurrentCircleCenterY() - y;
+            float circlePointLeftX = getWidth() / 2 - x;
+            float circlePointRightX = getWidth() / 2 + x;
+            float circlePointLeftX2 = circlePointLeftX + (y / r) * lineDistanceForCircle;
+            float circlePointRightX2 = circlePointRightX - (y / r) * lineDistanceForCircle;
+            float circlePointY2 = circlePointY - (x / r) * lineDistanceForCircle;
+            Path pathCubic = new Path();
+            if (circlePointLeftX2 > circlePointRightX2) {
+                // draw nothing
+            } else if (getCurrentBumpSize() + getCurrentCollapseProgressY() < AndroidUtilities.dp(avatarTopMarginForAbsord) / 2f) {
+                {
+                    float bumpY = getCurrentCollapseProgressY() + getCurrentBumpSize();
+                    pathCubic.reset();
+                    pathCubic.moveTo(circlePointLeftX, circlePointY);
+                    pathCubic.cubicTo(circlePointLeftX2, circlePointY2, getWidth() / 2 - getBumpDx(), -bumpY, getWidth() / 2, -bumpY);
+                    pathCubic.cubicTo(getWidth() / 2 + getBumpDx(), -bumpY, circlePointRightX2, circlePointY2, circlePointRightX, circlePointY);
+                    pathCubic.close();
+                    canvas.drawPath(pathCubic, collapseBlackPaint);
+                }
+                {
+
+                    float topLinePointY = -AndroidUtilities.dpf2(avatarTopMarginForAbsord);
+                    float topLinePointX1Left = circlePointLeftX;
+                    float topLinePointX2Left = circlePointLeftX2;
+                    float topLinePointX1Right = circlePointRightX;
+                    float topLinePointX2Right = circlePointRightX2;
+                    float bumpXcenter = getWidth() / 2;
+                    float bumpXleft = getWidth() / 2 - getBumpDx();
+                    float bumpXRight = getWidth() / 2 + getBumpDx();
+                    float bumpY = topLinePointY + getCurrentBumpSize() + getCurrentCollapseProgressY();
+                    pathCubic.reset();
+                    pathCubic.moveTo(topLinePointX1Left, topLinePointY);
+                    pathCubic.cubicTo(topLinePointX2Left, topLinePointY + (x / r) * lineDistanceForCircle / 4f, bumpXleft, bumpY, bumpXcenter, bumpY);
+                    pathCubic.cubicTo(bumpXRight, bumpY, topLinePointX2Right, topLinePointY + (x / r) * lineDistanceForCircle / 4f, topLinePointX1Right, topLinePointY);
+                    pathCubic.close();
+                    canvas.drawPath(pathCubic, collapseBlackPaint);
+                }
+
+            } else {
+                float topLinePointY = -AndroidUtilities.dpf2(avatarTopMarginForAbsord);
+                float topLinePointX1Left = circlePointLeftX;
+                float topLinePointX2Left = circlePointLeftX2;
+                float topLinePointX1Right = circlePointRightX;
+                float topLinePointX2Right = circlePointRightX2;
+                if (progressCollapse < 0.5f) {
+                    topLinePointX1Left = circlePointLeftX2 - (0.5f - progressCollapse) * AndroidUtilities.dp(15);
+                    topLinePointX2Left = circlePointLeftX;
+                    topLinePointX1Right = circlePointRightX2 + (0.5f - progressCollapse) * AndroidUtilities.dp(15);
+                    topLinePointX2Right = circlePointRightX;
+                }
+
+                pathCubic.moveTo(topLinePointX1Left, topLinePointY);
+                pathCubic.cubicTo(topLinePointX2Left, topLinePointY, circlePointLeftX2, circlePointY2, circlePointLeftX, circlePointY);
+                pathCubic.lineTo(circlePointRightX, circlePointY);
+                pathCubic.cubicTo(circlePointRightX2, circlePointY2, topLinePointX2Right, topLinePointY, topLinePointX1Right, topLinePointY);
+                pathCubic.close();
+                canvas.drawPath(pathCubic, collapseBlackPaint);
+            }
+        }
+
+        private void drawCollapseAnimationForeground(Canvas canvas) {
+            collapseBlackPaint.setAlpha((int) (255f * Math.min(1, (1f - progressCollapse) * 1.5f)));
+            canvas.drawCircle(getWidth() / 2, getCurrentCircleCenterY(), getCurrentCircleR(), collapseBlackPaint);
+            collapseBlackPaint.setAlpha(255);
+
+            collapseGradientPaint.setShader(new RadialGradient(getWidth() / 2, getCurrentCircleCenterY(),
+                    getCurrentCircleR(), Color.TRANSPARENT, Color.BLACK, Shader.TileMode.REPEAT));
+            collapseGradientPaint.setAlpha((int) (255f * Math.min(1, (1f - progressCollapse) * 1.5f)));
+            canvas.drawCircle(getWidth() / 2, getCurrentCircleCenterY(), getCurrentCircleR(), collapseGradientPaint);
         }
 
         @Override
@@ -1030,12 +1169,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             invalidate();
         }
 
-        public void setProgressCollapse(float animatedFracture){
+        public void setProgressCollapse(float animatedFracture) {
             if (progressCollapse == animatedFracture) {
                 return;
             }
             progressCollapse = animatedFracture;
-            setScaleY(progressCollapse);
             invalidate();
         }
     }
@@ -3758,6 +3896,14 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                                 listView.smoothScrollBy(0, view.getTop() - AndroidUtilities.dp(topContentHeightDefault), CubicBezierInterpolator.EASE_OUT_QUINT);
                             }
                         }
+
+                    } else {
+                        final View view = layoutManager.findViewByPosition(0);
+                        if (avatarImage.progressCollapse > 0.8f) {
+                            listView.smoothScrollBy(0, view.getTop() - AndroidUtilities.dp(topContentHeightDefault), CubicBezierInterpolator.EASE_OUT_QUINT);
+                        } else if (avatarImage.progressCollapse < 0.1f) {
+
+                        }
                     }
                 }
                 return result;
@@ -4953,6 +5099,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         avatarContainer.setPivotX(AndroidUtilities.dpf2(avatarSizeDefaultHalf));
         avatarContainer.setPivotY(0);
         avatarContainer2.addView(avatarContainer, LayoutHelper.createFrame(avatarSizeDefault, avatarSizeDefault, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 0, 0, 0));
+        avatarContainer2.setClipToPadding(false);
+        avatarContainer2.setClipChildren(false);
+        avatarContainer.setClipToPadding(false);
+        avatarContainer.setClipChildren(false);
+
         avatarImage = new AvatarImageView(context) {
             @Override
             public void onInitializeAccessibilityNodeInfo(AccessibilityNodeInfo info) {
@@ -4976,6 +5127,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 }
             }
         };
+        avatarImage.setClipToOutline(false);
         avatarImage.getImageReceiver().setAllowDecodeSingleFrame(true);
         avatarImage.setRoundRadius(getSmallAvatarRoundRadius());
         avatarImage.setPivotX(0);
@@ -5702,7 +5854,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     Integer offset = positionToOffset.get(holder.getAdapterPosition());
                     if (offset != null) {
                         int dy = -(offset + (listView.getPaddingTop() - child.getTop() - actionBar.getMeasuredHeight() + AndroidUtilities.dp(avatarExpandedExtraHeight) + (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0)));
-                        listView.smoothScrollBy(0, dy,250, CubicBezierInterpolator.EASE_OUT_QUINT);
+                        listView.smoothScrollBy(0, dy, 250, CubicBezierInterpolator.EASE_OUT_QUINT);
                         return true;
                     }
                 }
@@ -5818,12 +5970,12 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         avatarImage.setForegroundAlpha(value);
 
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) avatarContainer.getLayoutParams();
-        params.width = (int) AndroidUtilities.lerp(AndroidUtilities.dpf2(avatarSizeDefault), listView.getMeasuredWidth()/avatarScale, value);
-        params.height = (int) AndroidUtilities.lerp(AndroidUtilities.dpf2(avatarSizeDefault), (extraHeight + newTop)/avatarScale, value);
+        params.width = (int) AndroidUtilities.lerp(AndroidUtilities.dpf2(avatarSizeDefault), listView.getMeasuredWidth() / avatarScale, value);
+        params.height = (int) AndroidUtilities.lerp(AndroidUtilities.dpf2(avatarSizeDefault), (extraHeight + newTop) / avatarScale, value);
         avatarContainer.setPivotX(params.width / 2f);
         params = (FrameLayout.LayoutParams) avatarImage.getLayoutParams();
-        params.width = (int) AndroidUtilities.lerp(AndroidUtilities.dpf2(avatarSizeDefault), listView.getMeasuredWidth()/avatarScale, value);
-        params.height = Math.max(params.width, (int) AndroidUtilities.lerp(AndroidUtilities.dpf2(avatarSizeDefault), (extraHeight + newTop)/avatarScale, value));
+        params.width = (int) AndroidUtilities.lerp(AndroidUtilities.dpf2(avatarSizeDefault), listView.getMeasuredWidth() / avatarScale, value);
+        params.height = Math.max(params.width, (int) AndroidUtilities.lerp(AndroidUtilities.dpf2(avatarSizeDefault), (extraHeight + newTop) / avatarScale, value));
         avatarContainer.requestLayout();
 
         updateCollectibleHint();
@@ -7385,8 +7537,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
 
             avatarX = -AndroidUtilities.dpf2(47f) * diff;
-            float avatarTranslationDiff= Math.max(0f,(diff-0.5f)*2f);
-            avatarY = avatarTranslationDiff * (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() *  avatarTranslationDiff - avatarSizeDefaultHalf * AndroidUtilities.density* avatarTranslationDiff+ 27 * AndroidUtilities.density * avatarTranslationDiff + actionBar.getTranslationY()+ (1f-avatarTranslationDiff) * AndroidUtilities.density * avatarTopMarginForAbsord;
+            float avatarTranslationDiff = Math.max(0f, (diff - 0.5f) * 2f);
+            avatarY = avatarTranslationDiff * (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() * avatarTranslationDiff - avatarSizeDefaultHalf * AndroidUtilities.density * avatarTranslationDiff + 27 * AndroidUtilities.density * avatarTranslationDiff + actionBar.getTranslationY() + (1f - avatarTranslationDiff) * AndroidUtilities.density * avatarTopMarginForAbsord - AndroidUtilities.dpf2(2);
 
             float h = openAnimationInProgress ? initialAnimationExtraHeight : extraHeight;
             if (h > AndroidUtilities.dp(topContentHeightDefault) || isPulledDown) {
@@ -7534,7 +7686,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     }
 
 
-
                     if (expandAnimator == null || !expandAnimator.isRunning()) {
                         refreshNameAndOnlineXY();
                         nameTextView[1].setTranslationX(nameX);
@@ -7609,9 +7760,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
                 updateCollectibleHint();
             } else if (extraHeight <= AndroidUtilities.dp(topContentHeightDefault)) {
-                float avatarScaleDiff= Math.max(0f,(diff-0.9f)*10f);
-                avatarScale = AndroidUtilities.lerp(0.9f,1f,avatarScaleDiff);
-                avatarImage.setProgressCollapse(Math.min(0.5f,diff)*2f);
+                float avatarScaleDiff = Math.max(0f, (diff - 0.9f) * 10f);
+                avatarScale = AndroidUtilities.lerp(0.9f, 1f, avatarScaleDiff);
+                avatarImage.setProgressCollapse(Math.min(0.5f, diff) * 2f);
                 if (storyView != null) {
                     storyView.invalidate();
                 }
