@@ -363,6 +363,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private HintView fwdRestrictedHint;
     private FrameLayout avatarContainer;
     private FrameLayout avatarContainer2;
+    private ProfileButtonsLayout profileButtonsLayout;
     private DrawerProfileCell.AnimatedStatusView animatedStatusView;
     private AvatarImageView avatarImage;
     private View avatarOverlay;
@@ -1179,6 +1180,15 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             }
             progressCollapse = CubicBezierInterpolator.EASE_IN.getInterpolation(animatedFracture);
             invalidate();
+        }
+    }
+
+    public static class ProfileButtonsLayout extends LinearLayout {
+        public ProfileButtonsLayout(@NonNull Context context) {
+            super(context);
+            setOrientation(HORIZONTAL);
+            setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(8), AndroidUtilities.dp(16), AndroidUtilities.dp(8));
+            setBackgroundColor(0xca000000);
         }
     }
 
@@ -5253,8 +5263,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
         avatarsViewPagerIndicatorView = new PagerIndicatorView(context);
         avatarContainer2.addView(avatarsViewPagerIndicatorView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-
         frameLayout.addView(actionBar);
+
+
+        profileButtonsLayout = new ProfileButtonsLayout(context);
+        avatarContainer2.addView(profileButtonsLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, buttonRowHeightDefault, Gravity.TOP | Gravity.LEFT));
 
         float rightMargin = (54 + ((callItemVisible && userId != 0) ? 54 : 0));
         boolean hasTitleExpanded = false;
@@ -7471,7 +7484,22 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             listView.setTopGlowOffset((int) extraHeight);
 
             listView.setOverScrollMode(extraHeight > AndroidUtilities.dp(topContentHeightDefault) && extraHeight < listView.getMeasuredWidth() - newTop ? View.OVER_SCROLL_NEVER : View.OVER_SCROLL_ALWAYS);
+            if (profileButtonsLayout != null) {
 
+                float top = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() + extraHeight + searchTransitionOffset;
+                if (top - AndroidUtilities.dp(buttonRowHeightDefault) > (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight()) {
+                    profileButtonsLayout.setTranslationY(top - AndroidUtilities.dp(buttonRowHeightDefault));
+                    if (profileButtonsLayout.getLayoutParams().height != AndroidUtilities.dp(buttonRowHeightDefault)) {
+                        profileButtonsLayout.getLayoutParams().height = AndroidUtilities.dp(buttonRowHeightDefault);
+                        profileButtonsLayout.requestLayout();
+                    }
+                } else {
+                    profileButtonsLayout.setTranslationY((int) (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight());
+                    profileButtonsLayout.getLayoutParams().height = (int) (AndroidUtilities.dpf2(buttonRowHeightDefault) * ((1f - (ActionBar.getCurrentActionBarHeight() - top + (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0))) / AndroidUtilities.dpf2(buttonRowHeightDefault)));
+                    profileButtonsLayout.setTranslationY(top - profileButtonsLayout.getLayoutParams().height);
+                    profileButtonsLayout.requestLayout();
+                }
+            }
             if (writeButton != null) {
                 writeButton.setTranslationY((actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() + extraHeight + searchTransitionOffset - AndroidUtilities.dp(29.5f));
 
@@ -7548,9 +7576,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
 
             avatarX = -AndroidUtilities.dpf2(47f) * diff;
-            float avatarTranslationDiff = CubicBezierInterpolator.EASE_OUT.getInterpolation(Math.max(0f, (diff - 0.7f) * 10f / 3f));
-            avatarY = avatarTranslationDiff * (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() * avatarTranslationDiff - avatarSizeDefaultHalf * AndroidUtilities.density * avatarTranslationDiff + 27 * AndroidUtilities.density * avatarTranslationDiff + actionBar.getTranslationY() + (1f - avatarTranslationDiff) * AndroidUtilities.density * avatarTopMarginForAbsord - AndroidUtilities.dpf2(2);
 
+            float avatarTranslationDiff = CubicBezierInterpolator.EASE_OUT.getInterpolation(Math.max(0f, (diff - 0.8f) * 10f / 2f));
+            avatarY = avatarTranslationDiff * (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() * avatarTranslationDiff - avatarSizeDefaultHalf * AndroidUtilities.density * avatarTranslationDiff + 27 * AndroidUtilities.density * avatarTranslationDiff + actionBar.getTranslationY() + (1f - avatarTranslationDiff) * AndroidUtilities.density * avatarTopMarginForAbsord - AndroidUtilities.dpf2(2);
             float h = openAnimationInProgress ? initialAnimationExtraHeight : extraHeight;
             if (h > AndroidUtilities.dp(topContentHeightDefault) || isPulledDown) {
                 expandProgress = Math.max(0f, Math.min(1f, (h - AndroidUtilities.dp(topContentHeightDefault)) / (listView.getMeasuredWidth() + AndroidUtilities.dp(avatarExpandedExtraHeight) - newTop - AndroidUtilities.dp(topContentHeightDefault))));
@@ -7625,6 +7653,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     params.height = (int) (h + newTop);
                     avatarsViewPager.requestLayout();
                     if (!expandAnimator.isRunning()) {
+
                         float additionalTranslationY = 0;
                         if (openAnimationInProgress && playProfileAnimation == 2) {
                             additionalTranslationY = -(1.0f - avatarAnimationProgress) * AndroidUtilities.dp(50);
@@ -7702,6 +7731,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
 
                     if (expandAnimator == null || !expandAnimator.isRunning()) {
+
                         refreshNameAndOnlineXY();
                         nameTextView[1].setTranslationX(nameX);
                         nameTextView[1].setTranslationY(nameY);
@@ -7779,7 +7809,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             } else if (extraHeight <= AndroidUtilities.dp(topContentHeightDefault)) {
                 float avatarScaleDiff = Math.max(0f, (diff - 0.9f) * 10f);
                 avatarScale = AndroidUtilities.lerp(0.9f, 1f, avatarScaleDiff);
-                avatarImage.setProgressCollapse(Math.min(0.7f, diff) * 10f / 7f);
+                avatarImage.setProgressCollapse(Math.min(0.8f, diff) * 10f / 8f);
                 if (storyView != null) {
                     storyView.invalidate();
                 }
@@ -7803,13 +7833,13 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 float nameXTo = AndroidUtilities.displaySize.x / 2f - nameTextView[1].getWidth() / 2f;
                 float nameYfrom = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + AndroidUtilities.dp(8);
                 float nameYTo = (float) Math.floor(avatarY) + AndroidUtilities.dp(avatarSizeDefault) + AndroidUtilities.dp(1.3f) + AndroidUtilities.dp(7) * diff + titleAnimationsYDiff * (1f - avatarAnimationProgress);
-
-                nameX = -AndroidUtilities.dp(nameTextViewDefaultMarginLeft) + AndroidUtilities.lerp(nameXfrom, nameXTo, CubicBezierInterpolator.EASE_OUT.getInterpolation(diff));
-                nameY = AndroidUtilities.lerp(nameYfrom, nameYTo, CubicBezierInterpolator.EASE_OUT.getInterpolation(diff));
+                float nameTranslationValue = Math.max(0f, diff - (1f - diff) * (1f * (ActionBar.getCurrentActionBarHeight()) / (topContentHeightDefault)));
+                nameX = -AndroidUtilities.dp(nameTextViewDefaultMarginLeft) + AndroidUtilities.lerp(nameXfrom, nameXTo, CubicBezierInterpolator.EASE_OUT.getInterpolation(nameTranslationValue));
+                nameY = AndroidUtilities.lerp(nameYfrom, nameYTo, CubicBezierInterpolator.EASE_OUT.getInterpolation(nameTranslationValue));
                 for (int a = 0; a < onlineTextView.length; a++) {
                     float onlineXFrom = AndroidUtilities.dp(backButtonSize);
                     float onlineXTo = AndroidUtilities.displaySize.x / 2f - onlineTextView[a].getWidth() / 2f;
-                    onlineX[a] = -AndroidUtilities.dp(nameTextViewDefaultMarginLeft) + AndroidUtilities.lerp(onlineXFrom, onlineXTo, CubicBezierInterpolator.EASE_OUT.getInterpolation(diff));
+                    onlineX[a] = -AndroidUtilities.dp(nameTextViewDefaultMarginLeft) + AndroidUtilities.lerp(onlineXFrom, onlineXTo, CubicBezierInterpolator.EASE_OUT.getInterpolation(nameTranslationValue));
                 }
                 onlineY = (float) Math.floor(nameY) + AndroidUtilities.dp(24);
                 if (showStatusButton != null) {
