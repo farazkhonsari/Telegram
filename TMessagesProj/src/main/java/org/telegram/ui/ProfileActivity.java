@@ -1177,7 +1177,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             if (progressCollapse == animatedFracture) {
                 return;
             }
-            progressCollapse = animatedFracture;
+            progressCollapse = CubicBezierInterpolator.EASE_IN.getInterpolation( animatedFracture);
             invalidate();
         }
     }
@@ -7541,7 +7541,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
 
             avatarX = -AndroidUtilities.dpf2(47f) * diff;
-            float avatarTranslationDiff = Math.max(0f, (diff - 0.5f) * 2f);
+            float avatarTranslationDiff = CubicBezierInterpolator.EASE_OUT.getInterpolation(Math.max(0f, (diff - 0.7f) * 10f /3f));
             avatarY = avatarTranslationDiff * (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() * avatarTranslationDiff - avatarSizeDefaultHalf * AndroidUtilities.density * avatarTranslationDiff + 27 * AndroidUtilities.density * avatarTranslationDiff + actionBar.getTranslationY() + (1f - avatarTranslationDiff) * AndroidUtilities.density * avatarTopMarginForAbsord - AndroidUtilities.dpf2(2);
 
             float h = openAnimationInProgress ? initialAnimationExtraHeight : extraHeight;
@@ -7766,7 +7766,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             } else if (extraHeight <= AndroidUtilities.dp(topContentHeightDefault)) {
                 float avatarScaleDiff = Math.max(0f, (diff - 0.9f) * 10f);
                 avatarScale = AndroidUtilities.lerp(0.9f, 1f, avatarScaleDiff);
-                avatarImage.setProgressCollapse(Math.min(0.5f, diff) * 2f);
+                avatarImage.setProgressCollapse(Math.min(0.7f, diff) * 10f/7f);
                 if (storyView != null) {
                     storyView.invalidate();
                 }
@@ -7786,12 +7786,13 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     starFgItem.setTranslationX(avatarContainer.getX() + AndroidUtilities.dp(28) + extra);
                     starFgItem.setTranslationY(avatarContainer.getY() + AndroidUtilities.dp(24) + extra);
                 }
-                nameX = -AndroidUtilities.dp(nameTextViewDefaultMarginLeft)+ AndroidUtilities.lerp(AndroidUtilities.dp(backButtonSize) ,
-                        AndroidUtilities.displaySize.x/2f - nameTextView[1].getWidth()/2f,diff
-                        );
-                nameY =
-                        AndroidUtilities.lerp((actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0),
-                        (float) Math.floor(avatarY)+ AndroidUtilities.dp(avatarSizeDefault) + AndroidUtilities.dp(1.3f) + AndroidUtilities.dp(7) * diff + titleAnimationsYDiff * (1f - avatarAnimationProgress),diff);
+                float nameXfrom = AndroidUtilities.dp(backButtonSize);
+                float nameXTo= AndroidUtilities.displaySize.x/2f - nameTextView[1].getWidth()/2f;
+                float nameYfrom = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0);
+                float nameYTo= (float) Math.floor(avatarY)+ AndroidUtilities.dp(avatarSizeDefault) + AndroidUtilities.dp(1.3f) + AndroidUtilities.dp(7) * diff + titleAnimationsYDiff * (1f - avatarAnimationProgress);
+
+                nameX =  -AndroidUtilities.dp(nameTextViewDefaultMarginLeft)+ AndroidUtilities.lerp( nameXfrom, nameXTo,CubicBezierInterpolator.EASE_OUT.getInterpolation(diff));
+                nameY = AndroidUtilities.lerp(nameYfrom, nameYTo, CubicBezierInterpolator.EASE_OUT.getInterpolation(diff));
 
                 onlineX = -21 * AndroidUtilities.density * diff;
                 onlineY = (float) Math.floor(avatarY) + AndroidUtilities.dp(24) + (float) Math.floor(11 * AndroidUtilities.density) * diff;
