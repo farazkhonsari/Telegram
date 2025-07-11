@@ -955,7 +955,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             return ((0.1f * getHeight()) + AndroidUtilities.dpf2(avatarTopMarginForAbsord) + (hasStories ? (int) AndroidUtilities.dpf2(3.5f) : 0)) * (1f - progressCollapse);
         }
 
-        private float getCurrentCircleCenterY() {
+        public float getCurrentCircleCenterY() {
             return getCurrentCircleR() - getCurrentCollapseProgressY();
         }
 
@@ -5238,7 +5238,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         frameLayout.addView(avatarContainer2, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.START, 0, 0, 0, 0));
         avatarContainer.setPivotX(AndroidUtilities.dpf2(avatarSizeDefaultHalf));
         avatarContainer.setPivotY(0);
-        avatarContainer2.addView(avatarContainer, LayoutHelper.createFrame(avatarSizeDefault, avatarSizeDefault, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 0, 0, 0));
+
         avatarContainer2.setClipToPadding(false);
         avatarContainer2.setClipChildren(false);
         avatarContainer.setClipToPadding(false);
@@ -5272,6 +5272,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         avatarImage.setRoundRadius(getSmallAvatarRoundRadius());
         avatarImage.setPivotX(0);
         avatarImage.setPivotY(0);
+
+        giftsView = new ProfileGiftsView(context, currentAccount, getDialogId(), avatarContainer, avatarImage, resourcesProvider);
+        avatarContainer2.addView(giftsView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        avatarContainer2.addView(avatarContainer, LayoutHelper.createFrame(avatarSizeDefault, avatarSizeDefault, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 0, 0, 0));
         avatarContainer.addView(avatarImage, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL));
         avatarImage.setOnClickListener(v -> {
             if (avatarBig != null) {
@@ -5567,8 +5571,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             avatarImage.setHasStories(needInsetForStories());
         }
         avatarContainer2.addView(storyView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-        giftsView = new ProfileGiftsView(context, currentAccount, getDialogId(), avatarContainer, avatarImage, resourcesProvider);
-        avatarContainer2.addView(giftsView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         updateProfileData(true);
 
         writeButton = new RLottieImageView(context);
@@ -7938,6 +7940,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 float avatarScaleDiff = Math.max(0f, (diff - 0.9f) * 10f);
                 avatarScale = AndroidUtilities.lerp(0.9f, 1f, avatarScaleDiff);
                 avatarImage.setProgressCollapse(Math.min(0.8f, diff) * 10f / 8f);
+                 giftsView.setCollapseProgress(Math.max(0,Math.min(1,(diff-0.62f)/(1f-0.62f))));
                 if (storyView != null) {
                     storyView.invalidate();
                 }
