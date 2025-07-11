@@ -43,6 +43,8 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
 import android.graphics.LinearGradient;
 import android.graphics.Outline;
 import android.graphics.Paint;
@@ -67,6 +69,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -80,6 +83,7 @@ import android.text.util.Linkify;
 import android.util.Property;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
+import android.util.StateSet;
 import android.util.TypedValue;
 import android.view.Display;
 import android.view.Gravity;
@@ -189,6 +193,7 @@ import org.telegram.ui.Business.OpeningHoursActivity;
 import org.telegram.ui.Business.ProfileHoursCell;
 import org.telegram.ui.Business.ProfileLocationCell;
 import org.telegram.ui.Cells.AboutLinkCell;
+import org.telegram.ui.Cells.AppIconsSelectorCell;
 import org.telegram.ui.Cells.CheckBoxCell;
 import org.telegram.ui.Cells.DividerCell;
 import org.telegram.ui.Cells.DrawerProfileCell;
@@ -224,11 +229,13 @@ import org.telegram.ui.Components.CanvasButton;
 import org.telegram.ui.Components.ChatActivityInterface;
 import org.telegram.ui.Components.ChatAvatarContainer;
 import org.telegram.ui.Components.ChatNotificationsPopupWrapper;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.ColoredImageSpan;
 import org.telegram.ui.Components.CombinedDrawable;
 import org.telegram.ui.Components.CrossfadeDrawable;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.DotDividerSpan;
+import org.telegram.ui.Components.Easings;
 import org.telegram.ui.Components.EmojiPacksAlert;
 import org.telegram.ui.Components.EmptyStubSpan;
 import org.telegram.ui.Components.FloatingDebug.FloatingDebugController;
@@ -262,6 +269,7 @@ import org.telegram.ui.Components.ShareAlert;
 import org.telegram.ui.Components.SharedMediaLayout;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
 import org.telegram.ui.Components.StickerEmptyView;
+import org.telegram.ui.Components.Text;
 import org.telegram.ui.Components.TimerDrawable;
 import org.telegram.ui.Components.TranslateAlert2;
 import org.telegram.ui.Components.TypefaceSpan;
@@ -529,7 +537,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     public final static int avatarExpandedExtraHeight = 96;
     public final static int avatarTopMarginForAbsord = 18;
     public final static int nameTextViewDefaultMarginLeft = 118;
-    public final static int buttonRowHeightDefault = 64;
+    public final static int buttonRowHeightDefault = 80;
     public final static int backButtonSize = 56;
 
     private final static int add_contact = 1;
@@ -1183,13 +1191,107 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }
     }
 
-    public static class ProfileButtonsLayout extends LinearLayout {
+    class ProfileBlurButton extends View {
+        private Text text;
+        private Drawable iconDrawable;
+        private final Drawable rippleDrawable = Theme.createRadSelectorDrawable(0x10ffffff, 8, 8);
+        private final ColorFilter colorFilter;
+
+        public ProfileBlurButton(Context context) {
+            super(context);
+            rippleDrawable.setCallback(this);
+            ColorMatrix colorMatrix = new ColorMatrix();
+            AndroidUtilities.adjustSaturationColorMatrix(colorMatrix, +.35f);
+            AndroidUtilities.multiplyBrightnessColorMatrix(colorMatrix, 0.9f);
+            colorFilter = new ColorMatrixColorFilter(colorMatrix);
+            iconDrawable = getContext().getResources().getDrawable(R.drawable.ic_profile_video).mutate();
+        }
+
+        public void setText(CharSequence text) {
+            this.text = new Text(text, 11);
+        }
+        public void setImage(int resourceID) {
+            this.iconDrawable = getContext().getResources().getDrawable(resourceID).mutate();
+        }
+
+        public CharSequence getText() {
+            return this.text != null ? this.text.getText() : null;
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            AndroidUtilities.rectTmp.set(0, 0, getWidth(), getHeight());
+            Paint paint = Theme.getThemePaint(Theme.key_paint_chatActionBackground);
+            final ColorFilter wasColorFilter = paint.getColorFilter();
+            paint.setColorFilter(colorFilter);
+            canvas.drawRoundRect(AndroidUtilities.rectTmp, dp(12), dp(12), paint);
+            paint.setColorFilter(wasColorFilter);
+            final int textColor = Color.WHITE;
+            if (text != null) {
+                text.ellipsize(getWidth() - dp(14)).draw(canvas, (getWidth() - text.getWidth()) / 2f, getHeight() / 2f+dp(12), textColor, 1f);
+            }
+            iconDrawable.setBounds(getWidth()/2-dp(12), dp(8), getWidth()/2+dp(12),dp(32));
+            iconDrawable.draw(canvas);
+            rippleDrawable.setBounds(0, 0, getWidth(), getHeight());
+            rippleDrawable.draw(canvas);
+        }
+
+
+        @Override
+        public boolean onTouchEvent(MotionEvent event) {
+            boolean r = false;
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                r = true;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    rippleDrawable.setHotspot(event.getX(), event.getY());
+                }
+                rippleDrawable.setState(new int[]{android.R.attr.state_enabled, android.R.attr.state_pressed});
+            } else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
+                rippleDrawable.setState(StateSet.NOTHING);
+            }
+            return super.onTouchEvent(event) || r;
+        }
+
+        @Override
+        protected boolean verifyDrawable(@NonNull Drawable who) {
+            return who == rippleDrawable || super.verifyDrawable(who);
+        }
+    }
+
+    public class ProfileButtonsLayout extends LinearLayout {
         public ProfileButtonsLayout(@NonNull Context context) {
             super(context);
             setOrientation(HORIZONTAL);
-            setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(8), AndroidUtilities.dp(16), AndroidUtilities.dp(8));
-            setBackgroundColor(0xca000000);
+            setBackgroundColor(Color.TRANSPARENT);
+            setPadding(AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8), 0);
+            for (int a = 0; a < 4; a++) {
+                LayoutParams param = LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT, 1, Gravity.CENTER);
+                param.setMargins(AndroidUtilities.dp(3), AndroidUtilities.dp(12), AndroidUtilities.dp(3), AndroidUtilities.dp(12));
+                ProfileBlurButton view = new ProfileBlurButton(context);
+                view.setOnClickListener(new OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                    }
+                });
+                if(a==0){
+                    view.setText("Message");
+                    view.setImage(R.drawable.ic_profile_message);
+                }else if(a==1){
+                    view.setText("Call");
+                    view.setImage(R.drawable.ic_profile_call);
+                }else if(a==2){
+                    view.setText("Video");
+                    view.setImage(R.drawable.ic_profile_video);
+                }else if(a==3){
+                    view.setText("Unmute");
+                    view.setImage(R.drawable.ic_profile_unmute);
+                }
+
+                addView(view, param);
+            }
         }
+
+
     }
 
     private class TopView extends FrameLayout {
@@ -5267,6 +5369,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
 
         profileButtonsLayout = new ProfileButtonsLayout(context);
+
         avatarContainer2.addView(profileButtonsLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, buttonRowHeightDefault, Gravity.TOP | Gravity.LEFT));
 
         float rightMargin = (54 + ((callItemVisible && userId != 0) ? 54 : 0));
@@ -5445,6 +5548,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         updateProfileData(true);
 
         writeButton = new RLottieImageView(context);
+        writeButton.setVisibility(View.GONE);
         writeButtonSetBackground();
         if (userId != 0) {
             if (imageUpdater != null) {
