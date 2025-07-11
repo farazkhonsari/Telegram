@@ -6136,12 +6136,12 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     }
 
     private int getSmallAvatarRoundRadius() {
-        if (chatId != 0) {
-            TLRPC.Chat chatLocal = getMessagesController().getChat(chatId);
-            if (ChatObject.isForum(chatLocal)) {
-                return AndroidUtilities.dp(needInsetForStories() ? 11 : 16);
-            }
-        }
+//        if (chatId != 0) {
+//            TLRPC.Chat chatLocal = getMessagesController().getChat(chatId);
+//            if (ChatObject.isForum(chatLocal)) {
+//                return AndroidUtilities.dp(needInsetForStories() ? 11 : 16);
+//            }
+//        }
         return AndroidUtilities.dp(avatarSizeDefaultHalf);
     }
 
