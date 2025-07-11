@@ -487,12 +487,12 @@ public class ProfileStoriesView extends View implements NotificationCenter.Notif
     protected void dispatchDraw(Canvas canvas) {
         float rright = rightAnimated.set(this.right);
         float avatarPullProgress = Utilities.clamp((avatarContainer.getScaleX() - 1f) / 0.4f, 1f, 0f);
-        float insetMain = AndroidUtilities.lerp(AndroidUtilities.dpf2(4f), AndroidUtilities.dpf2(3.5f), avatarPullProgress);
+        float insetMain = AndroidUtilities.dpf2(3.5f);
         insetMain *= progressToInsets;
-        float ax = avatarContainer.getX() + insetMain * avatarContainer.getScaleX();
+        float ax = avatarContainer.getX()+ insetMain - avatarContainer.getWidth()/2f * (avatarContainer.getScaleX()-1);
         float ay = avatarContainer.getY() + insetMain * avatarContainer.getScaleY();
         float aw = (avatarContainer.getWidth() - insetMain * 2) * avatarContainer.getScaleX();
-        float ah = (avatarContainer.getHeight() - insetMain * 2) * avatarContainer.getScaleY();
+        float ah = (avatarContainer.getWidth() - insetMain * 2) * avatarContainer.getScaleY();
         rect1.set(ax, ay, ax + aw, ay + ah);
 
         float maxX = this.left;
@@ -518,6 +518,9 @@ public class ProfileStoriesView extends View implements NotificationCenter.Notif
         }
 
         float segmentsAlpha = clamp(1f - expandProgress / 0.2f, 1, 0);
+        if(avatarContainer.getScaleX()<1){
+            segmentsAlpha= Math.max((avatarContainer.getScaleX()-0.9f)*10f,0);
+        }
         boolean isFailed = storiesController.isLastUploadingFailed(dialogId);
         boolean hasUploadingStories = storiesController.hasUploadingStories(dialogId);
         if (!hasUploadingStories && lastUploadingStory != null && lastUploadingStory.canceled) {
@@ -584,6 +587,9 @@ public class ProfileStoriesView extends View implements NotificationCenter.Notif
         }
         if (progressToUploading < 1f) {
             segmentsAlpha = clamp(1f - expandProgress / 0.2f, 1, 0) * (1f - progressToUploading);
+            if(avatarContainer.getScaleX()<1){
+                segmentsAlpha= Math.max((avatarContainer.getScaleX()-0.9f)*10f,0);
+            }
             final float segmentsCount = segmentsCountAnimated.set(count);
             final float segmentsUnreadCount = segmentsUnreadCountAnimated.set(unreadCount);
 

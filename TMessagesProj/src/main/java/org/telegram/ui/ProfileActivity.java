@@ -952,7 +952,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }
 
         private float getCurrentCollapseProgressY() {
-            return ((0.1f * getHeight()) + AndroidUtilities.dpf2(avatarTopMarginForAbsord)) * (1f - progressCollapse);
+            return ((0.1f * getHeight()) + AndroidUtilities.dpf2(avatarTopMarginForAbsord) + (hasStories ? (int) AndroidUtilities.dpf2(3.5f) : 0)) * (1f - progressCollapse);
         }
 
         private float getCurrentCircleCenterY() {
@@ -960,6 +960,16 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }
 
         private float getCurrentCirclePointRelativeY() {
+            if (hasStories) {
+                float y = getCurrentCircleR() - (1f - progressCollapse) * 2f * getCurrentCircleR() + AndroidUtilities.dpf2(3.5f);
+                if (y < -getCurrentCircleR()) {
+                    return getCurrentCircleR();
+                } else if (y > getCurrentCircleR()) {
+                    return getCurrentCircleR();
+                } else {
+                    return y;
+                }
+            }
             return getCurrentCircleR() - (1f - progressCollapse) * 2f * getCurrentCircleR();
         }
 
@@ -969,7 +979,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }
 
         private float getCurrentCircleR() {
-            return getHeight() / 2f * getCurrentCollapseScale();
+            return getHeight() / 2f * getCurrentCollapseScale() - (hasStories ? (int) AndroidUtilities.dpf2(3.5f) : 0) * getCurrentCollapseScale();
         }
 
         private float getBumpDx() {
@@ -1210,6 +1220,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         public void setText(CharSequence text) {
             this.text = new Text(text, 11);
         }
+
         public void setImage(int resourceID) {
             this.iconDrawable = getContext().getResources().getDrawable(resourceID).mutate();
         }
@@ -1220,18 +1231,31 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
         @Override
         protected void onDraw(Canvas canvas) {
+
             AndroidUtilities.rectTmp.set(0, 0, getWidth(), getHeight());
             Paint paint = Theme.getThemePaint(Theme.key_paint_chatActionBackground);
             final ColorFilter wasColorFilter = paint.getColorFilter();
             paint.setColorFilter(colorFilter);
             canvas.drawRoundRect(AndroidUtilities.rectTmp, dp(12), dp(12), paint);
             paint.setColorFilter(wasColorFilter);
-            final int textColor = Color.WHITE;
-            if (text != null) {
-                text.ellipsize(getWidth() - dp(14)).draw(canvas, (getWidth() - text.getWidth()) / 2f, getHeight() / 2f+dp(12), textColor, 1f);
+            float alpha= 1f;
+            int scaleSave=-1;
+            if (getHeight() < AndroidUtilities.dp(buttonRowHeightDefault - 24)) {
+               scaleSave= canvas.save();
+                canvas.scale(1f * getHeight() / AndroidUtilities.dpf2(buttonRowHeightDefault - 24), 1f * getHeight() / AndroidUtilities.dpf2(buttonRowHeightDefault - 24), getWidth() / 2f, getHeight() / 2f);
+                alpha = 1f* getHeight() / AndroidUtilities.dpf2(buttonRowHeightDefault - 24)/2f;
             }
-            iconDrawable.setBounds(getWidth()/2-dp(12), dp(8), getWidth()/2+dp(12),dp(32));
+
+            if (text != null) {
+               int textColor = Theme.multAlpha(Color.WHITE,alpha);
+                text.ellipsize(getWidth() - dp(14)).draw(canvas, (getWidth() - text.getWidth()) / 2f, getHeight() / 2f + dp(12), textColor, 1f);
+            }
+            iconDrawable.setBounds(getWidth() / 2 - dp(12), dp(8), getWidth() / 2 + dp(12), dp(32));
+            iconDrawable.setAlpha((int)(255* alpha));
             iconDrawable.draw(canvas);
+            if (scaleSave>0) {
+                canvas.restoreToCount(scaleSave);
+            }
             rippleDrawable.setBounds(0, 0, getWidth(), getHeight());
             rippleDrawable.draw(canvas);
         }
@@ -1273,16 +1297,16 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     public void onClick(View view) {
                     }
                 });
-                if(a==0){
+                if (a == 0) {
                     view.setText("Message");
                     view.setImage(R.drawable.ic_profile_message);
-                }else if(a==1){
+                } else if (a == 1) {
                     view.setText("Call");
                     view.setImage(R.drawable.ic_profile_call);
-                }else if(a==2){
+                } else if (a == 2) {
                     view.setText("Video");
                     view.setImage(R.drawable.ic_profile_video);
-                }else if(a==3){
+                } else if (a == 3) {
                     view.setText("Unmute");
                     view.setImage(R.drawable.ic_profile_unmute);
                 }
@@ -6044,7 +6068,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         final float k = AndroidUtilities.dpf2(8f);
 
         final float nameTextViewXEnd = AndroidUtilities.dpf2(18f) - nameTextView[1].getLeft();
-        final float nameTextViewYEnd = -AndroidUtilities.dp(buttonRowHeightDefault) + newTop + extraHeight - AndroidUtilities.dpf2(38f) - nameTextView[1].getBottom();
+        final float nameTextViewYEnd = -AndroidUtilities.dp(buttonRowHeightDefault) + newTop + extraHeight - AndroidUtilities.dpf2(16.5f) - nameTextView[1].getBottom();
         final float nameTextViewCx = k + nameX + (nameTextViewXEnd - nameX) / 2f;
         final float nameTextViewCy = k + nameY + (nameTextViewYEnd - nameY) / 2f;
         final float nameTextViewX = (1 - value) * (1 - value) * nameX + 2 * (1 - value) * value * nameTextViewCx + value * value * nameTextViewXEnd;
@@ -7766,10 +7790,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                             onlineX[a] = AndroidUtilities.dpf2(16f) - onlineTextView[a].getLeft();
                         }
                         nameTextView[1].setTranslationX(AndroidUtilities.dpf2(18f) - nameTextView[1].getLeft());
-                        nameTextView[1].setTranslationY(-AndroidUtilities.dp(buttonRowHeightDefault) + newTop + h - AndroidUtilities.dpf2(38f) - nameTextView[1].getBottom() + additionalTranslationY);
+                        nameTextView[1].setTranslationY(-AndroidUtilities.dp(buttonRowHeightDefault) + newTop + h - AndroidUtilities.dpf2(16.5f) - nameTextView[1].getBottom() + additionalTranslationY);
                         for (int a = 0; a < onlineTextView.length; a++) {
                             onlineTextView[a].setTranslationX(onlineX[a] + customPhotoOffset);
-                            onlineTextView[a].setTranslationY(-AndroidUtilities.dp(buttonRowHeightDefault) + newTop + h - AndroidUtilities.dpf2(18f) - onlineTextView[a].getBottom() + additionalTranslationY);
+                            onlineTextView[a].setTranslationY(nameTextView[1].getTranslationY() + AndroidUtilities.dp(24));
                         }
                         mediaCounterTextView.setTranslationX(onlineTextView[1].getTranslationX());
                         mediaCounterTextView.setTranslationY(onlineTextView[1].getTranslationY());
